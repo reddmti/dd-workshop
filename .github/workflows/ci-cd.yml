@@ -1,4 +1,4 @@
-name: DD Workshop CI/CD
+name: DD Workshop v2 CI/CD
 
 on:
   push:
@@ -9,29 +9,26 @@ on:
 env:
   DD_SERVICE: dd-workshop-api
   DD_ENV: workshop
-  REGION: us-central1
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  IMAGE: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/dd-workshop/dd-workshop-api
+  REGISTRY: us-central1-docker.pkg.dev/electric-loader-308712/dd-workshop
+  BACKEND_IMAGE: us-central1-docker.pkg.dev/electric-loader-308712/dd-workshop/dd-workshop-backend
+  FRONTEND_IMAGE: us-central1-docker.pkg.dev/electric-loader-308712/dd-workshop/dd-workshop-frontend
 
 jobs:
-  # ────────────────────────────────────────────────────────────
+  # ────────────────────────────────────
   # JOB 1: Tests + CI Visibility
-  # ────────────────────────────────────────────────────────────
+  # ────────────────────────────────────
   test:
     name: Test
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: |
-          pip install -r app/requirements.txt
+        run: pip install -r backend/requirements.txt
 
       - name: Run tests with CI Visibility
         env:
@@ -43,29 +40,27 @@ jobs:
           DD_CIVISIBILITY_ENABLED: "true"
           DD_TRACE_AGENT_URL: ""
         run: |
-          pip install ddtrace pytest-cov
-          cd app
+          cd backend
           ddtrace-run pytest test_main.py -v \
             --cov=. \
             --cov-report=xml:coverage.xml
 
-      - name: Upload coverage
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: coverage
-          path: app/coverage.xml
+          path: backend/coverage.xml
 
-  # ────────────────────────────────────────────────────────────
-  # JOB 2: Datadog SAST scan (Code Analysis)
-  # ────────────────────────────────────────────────────────────
+  # ────────────────────────────────────
+  # JOB 2: SAST Scan
+  # ────────────────────────────────────
   sast:
     name: SAST Scan
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Run Datadog SAST
+      - name: Datadog SAST
         uses: datadog/datadog-static-analyzer-github-action@v3
         with:
           dd_api_key: ${{ secrets.DD_API_KEY }}
@@ -73,19 +68,18 @@ jobs:
           dd_site: datadoghq.com
           cpu_count: 2
 
-  # ────────────────────────────────────────────────────────────
-  # JOB 3: Claude AI analysis (comenta el PR con análisis)
-  # ────────────────────────────────────────────────────────────
+  # ────────────────────────────────────
+  # JOB 3: Claude Analysis (solo en PR)
+  # ────────────────────────────────────
   claude-analysis:
-    name: Claude Code Analysis
+    name: Claude Analysis
     runs-on: ubuntu-latest
     needs: sast
     if: github.event_name == 'pull_request'
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Analyze with Claude and comment PR
+      - name: Analyze and comment PR
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -93,119 +87,97 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           pip install anthropic requests
-
           python3 << 'PYTHON'
-          import anthropic
-          import requests
-          import os
-          import subprocess
+          import anthropic, requests, os, subprocess
 
-          # Obtener diff del PR
           diff = subprocess.run(
               ["git", "diff", "origin/main...HEAD", "--", "*.py"],
               capture_output=True, text=True
-          ).stdout[:8000]  # límite de contexto
+          ).stdout[:8000]
 
           if not diff.strip():
-              print("No Python changes found, skipping analysis.")
               exit(0)
 
-          # Llamar a Claude para análisis
           client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
-          message = client.messages.create(
-              model="claude-opus-4-5",
-              max_tokens=1024,
-              messages=[{
-                  "role": "user",
-                  "content": f"""Eres un experto en seguridad de aplicaciones. Analiza este diff de código Python 
-          e identifica vulnerabilidades de seguridad. Para cada vulnerabilidad encontrada:
-          1. Nombra el tipo de vulnerabilidad (SQL Injection, Command Injection, etc.)
-          2. Indica la línea afectada
-          3. Explica el riesgo en una línea
-          4. Proporciona el código corregido
-
-          Responde en español. Sé conciso. Formato markdown.
-
-          DIFF:
-          {diff}"""
-              }]
+          msg = client.messages.create(
+              model="claude-opus-4-7", max_tokens=1024,
+              messages=[{"role": "user", "content": f"""Eres experto en seguridad.
+          Analiza este diff Python: tipo de vulnerabilidad, línea, riesgo y código corregido.
+          Español, markdown, conciso. DIFF:\n{diff}"""}]
           )
-
-          analysis = message.content[0].text
-
-          # Publicar comentario en el PR
-          comment_body = f"""## 🤖 Análisis de seguridad — Claude AI
-
-          {analysis}
-
-          ---
-          *Análisis generado automáticamente por Claude. Revisa también los resultados de Datadog Code Analysis.*
-          """
-
-          headers = {
-              "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
-              "Accept": "application/vnd.github+json"
-          }
-          url = f"https://api.github.com/repos/{os.environ['REPO']}/issues/{os.environ['PR_NUMBER']}/comments"
-          resp = requests.post(url, json={"body": comment_body}, headers=headers)
-          print(f"Comment posted: {resp.status_code}")
+          comment = f"## 🤖 Análisis — Claude AI\n\n{msg.content[0].text}\n\n---\n*Revisa también Datadog Code Analysis.*"
+          headers = {"Authorization": f"Bearer {os.environ['GH_TOKEN']}", "Accept": "application/vnd.github+json"}
+          requests.post(
+              f"https://api.github.com/repos/{os.environ['REPO']}/issues/{os.environ['PR_NUMBER']}/comments",
+              json={"body": comment}, headers=headers
+          )
           PYTHON
 
-  # ────────────────────────────────────────────────────────────
-  # JOB 4: Build + Deploy a GKE (solo en push a main)
-  # ────────────────────────────────────────────────────────────
+  # ────────────────────────────────────
+  # JOB 4: Build + Deploy (solo en main)
+  # ────────────────────────────────────
   deploy:
     name: Deploy to GKE
     runs-on: ubuntu-latest
     needs: [test, sast]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Authenticate to GCP
-        uses: google-github-actions/auth@v2
+      - uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Setup gcloud
-        uses: google-github-actions/setup-gcloud@v2
+      - uses: google-github-actions/setup-gcloud@v2
 
-      - name: Configure Docker for Artifact Registry
+      - name: Configure Docker
         run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
 
-      - name: Build and push Docker image
+      - name: Build and push backend
         run: |
-          docker build -t ${{ env.IMAGE }}:${{ github.sha }} \
-                       -t ${{ env.IMAGE }}:latest \
-                       ./app
-          docker push ${{ env.IMAGE }}:${{ github.sha }}
-          docker push ${{ env.IMAGE }}:latest
+          docker build -t ${{ env.BACKEND_IMAGE }}:${{ github.sha }} \
+                       -t ${{ env.BACKEND_IMAGE }}:latest ./backend
+          docker push ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
+          docker push ${{ env.BACKEND_IMAGE }}:latest
 
-      - name: Get GKE credentials
-        uses: google-github-actions/get-gke-credentials@v2
+      - name: Build and push frontend
+        run: |
+          docker build -t ${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
+                       -t ${{ env.FRONTEND_IMAGE }}:latest ./frontend
+          docker push ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
+          docker push ${{ env.FRONTEND_IMAGE }}:latest
+
+      - uses: google-github-actions/get-gke-credentials@v2
         with:
           cluster_name: dd-workshop-cluster
           location: us-central1
 
-      - name: Update image in deployment
+      - name: Install nginx ingress controller
         run: |
-          sed -i "s|REGION-docker.pkg.dev/PROJECT_ID/dd-workshop/dd-workshop-api:latest|${{ env.IMAGE }}:${{ github.sha }}|g" k8s/deployment.yaml
+          kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.1/deploy/static/provider/cloud/deploy.yaml || true
+          kubectl wait --namespace ingress-nginx \
+            --for=condition=ready pod \
+            --selector=app.kubernetes.io/component=controller \
+            --timeout=90s || true
 
-      - name: Deploy to GKE
+      - name: Deploy manifests
         run: |
-          kubectl apply -f k8s/deployment.yaml
-          kubectl apply -f k8s/service.yaml
-          kubectl rollout status deployment/dd-workshop-api --timeout=120s
+          sed -i "s|dd-workshop-backend:latest|dd-workshop-backend:${{ github.sha }}|g" k8s/manifests.yaml
+          sed -i "s|dd-workshop-frontend:latest|dd-workshop-frontend:${{ github.sha }}|g" k8s/manifests.yaml
+          kubectl apply -f k8s/manifests.yaml
+          kubectl rollout status deployment/dd-workshop-backend --timeout=120s
+          kubectl rollout status deployment/dd-workshop-frontend --timeout=120s
 
-      - name: Get service URL
+      - name: Get ingress IP
         run: |
-          echo "Waiting for LoadBalancer IP..."
+          echo "Waiting for ingress IP..."
           for i in {1..20}; do
-            IP=$(kubectl get svc dd-workshop-api -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)
+            IP=$(kubectl get svc -n ingress-nginx ingress-nginx-controller \
+              -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)
             if [ -n "$IP" ]; then
-              echo "App URL: http://$IP"
+              echo "Ingress IP: $IP"
+              echo "Point workshop.mmonsalves.dev to: $IP"
               break
             fi
-            sleep 10
+            sleep 15
           done

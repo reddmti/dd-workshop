@@ -1,0 +1,156 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dd-workshop-backend
+  namespace: default
+  labels:
+    app: dd-workshop-backend
+    tags.datadoghq.com/env: workshop
+    tags.datadoghq.com/service: dd-workshop-api
+    tags.datadoghq.com/version: "2.0.0"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dd-workshop-backend
+  template:
+    metadata:
+      labels:
+        app: dd-workshop-backend
+        tags.datadoghq.com/env: workshop
+        tags.datadoghq.com/service: dd-workshop-api
+        tags.datadoghq.com/version: "2.0.0"
+    spec:
+      containers:
+        - name: backend
+          image: us-central1-docker.pkg.dev/electric-loader-308712/dd-workshop/dd-workshop-backend:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: DD_TRACE_AGENT_PORT
+              value: "8126"
+            - name: DD_SERVICE
+              value: dd-workshop-api
+            - name: DD_ENV
+              value: workshop
+            - name: DD_VERSION
+              value: "2.0.0"
+            - name: DD_LOGS_INJECTION
+              value: "true"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "300m"
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dd-workshop-backend
+  namespace: default
+spec:
+  selector:
+    app: dd-workshop-backend
+  ports:
+    - port: 8000
+      targetPort: 8000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dd-workshop-frontend
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dd-workshop-frontend
+  template:
+    metadata:
+      labels:
+        app: dd-workshop-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: us-central1-docker.pkg.dev/electric-loader-308712/dd-workshop/dd-workshop-frontend:latest
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "100m"
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 15
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dd-workshop-frontend
+  namespace: default
+spec:
+  selector:
+    app: dd-workshop-frontend
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dd-workshop-ingress
+  namespace: default
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: workshop.mmonsalves.dev
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: dd-workshop-backend
+                port:
+                  number: 8000
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: dd-workshop-frontend
+                port:
+                  number: 80
