@@ -37,16 +37,14 @@ jobs:
         env:
           DD_API_KEY: ${{ secrets.DD_API_KEY }}
           DD_SITE: datadoghq.com
-          DD_SERVICE: ${{ env.DD_SERVICE }}
-          DD_ENV: ${{ env.DD_ENV }}
-          DATADOG_PYTHON_VERSION: 3
+          DD_SERVICE: dd-workshop-api
+          DD_ENV: workshop
+          DD_CIVISIBILITY_AGENTLESS_ENABLED: "true"
+          DD_CIVISIBILITY_ENABLED: "true"
         run: |
-          pip install pytest-datadog-ci
+          pip install ddtrace pytest-cov
           cd app
-          DD_CIVISIBILITY_AGENTLESS_ENABLED=true \
-          DD_CIVISIBILITY_ENABLED=true \
-          pytest test_main.py -v \
-            --ddtrace \
+          ddtrace-run pytest test_main.py -v \
             --cov=. \
             --cov-report=xml:coverage.xml
 
@@ -67,15 +65,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run Datadog SAST
-        uses: datadog/datadog-static-analyzer-github-action@v1
+        uses: datadog/datadog-static-analyzer-github-action@v3
         with:
           dd_api_key: ${{ secrets.DD_API_KEY }}
           dd_app_key: ${{ secrets.DD_APP_KEY }}
-          dd_service: ${{ env.DD_SERVICE }}
-          dd_env: ${{ env.DD_ENV }}
           dd_site: datadoghq.com
           cpu_count: 2
-          enable_performance_statistics: true
 
   # ────────────────────────────────────────────────────────────
   # JOB 3: Claude AI analysis (comenta el PR con análisis)
