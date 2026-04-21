@@ -41,7 +41,7 @@ app.add_middleware(
 # DB setup (SQLite in-memory)
 # ---------------------------------------------------------------
 def get_db():
-    conn = sqlite3.connect(":memory:")
+    conn = sqlite3.connect(":memory:", check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("""CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY, username TEXT, password TEXT, role TEXT, email TEXT)""")
