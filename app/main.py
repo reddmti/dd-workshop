@@ -54,14 +54,11 @@ def search_user(username: str):
     # BAD: string interpolation en query SQL
     query = f"SELECT id, username, role FROM users WHERE username = '{username}'"
     logger.info(f"Executing: {query}")
-    try:
-        cursor.execute(query)
-        rows = cursor.fetchall()
-        if not rows:
-            raise HTTPException(status_code=404, detail="User not found")
-        return {"users": [{"id": r[0], "username": r[1], "role": r[2]} for r in rows]}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    if not rows:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"users": [{"id": r[0], "username": r[1], "role": r[2]} for r in rows]}
 
 
 # ---------------------------------------------------------------

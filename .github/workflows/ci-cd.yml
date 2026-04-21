@@ -41,6 +41,7 @@ jobs:
           DD_ENV: workshop
           DD_CIVISIBILITY_AGENTLESS_ENABLED: "true"
           DD_CIVISIBILITY_ENABLED: "true"
+          DD_TRACE_AGENT_URL: ""
         run: |
           pip install ddtrace pytest-cov
           cd app
