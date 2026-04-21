@@ -51,10 +51,10 @@ def health():
 def search_user(username: str):
     conn = get_db()
     cursor = conn.cursor()
-    # BAD: string interpolation en query SQL
-    query = f"SELECT id, username, role FROM users WHERE username = '{username}'"
-    logger.info(f"Executing: {query}")
-    cursor.execute(query)
+    # FIXED: using parameterized query to prevent SQL injection
+    query = "SELECT id, username, role FROM users WHERE username = ?"
+    logger.info(f"Executing: {query} with params: ({username},)")
+    cursor.execute(query, (username,))
     rows = cursor.fetchall()
     if not rows:
         raise HTTPException(status_code=404, detail="User not found")
