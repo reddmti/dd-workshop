@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dd-workshop-api
+  namespace: default
+  labels:
+    app: dd-workshop-api
+    tags.datadoghq.com/env: "workshop"
+    tags.datadoghq.com/service: "dd-workshop-api"
+    tags.datadoghq.com/version: "1.0.0"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dd-workshop-api
+  template:
+    metadata:
+      labels:
+        app: dd-workshop-api
+        tags.datadoghq.com/env: "workshop"
+        tags.datadoghq.com/service: "dd-workshop-api"
+        tags.datadoghq.com/version: "1.0.0"
+      annotations:
+        admission.datadoghq.com/python-lib.version: "v2"
+    spec:
+      containers:
+        - name: dd-workshop-api
+          image: REGION-docker.pkg.dev/PROJECT_ID/dd-workshop/dd-workshop-api:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DD_ENV
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.labels['tags.datadoghq.com/env']
+            - name: DD_SERVICE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.labels['tags.datadoghq.com/service']
+            - name: DD_VERSION
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.labels['tags.datadoghq.com/version']
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: DD_TRACE_AGENT_PORT
+              value: "8126"
+            - name: DD_LOGS_INJECTION
+              value: "true"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 10
