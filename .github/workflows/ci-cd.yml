@@ -1,0 +1,215 @@
+name: DD Workshop CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  DD_SERVICE: dd-workshop-api
+  DD_ENV: workshop
+  REGION: us-central1
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  IMAGE: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/dd-workshop/dd-workshop-api
+
+jobs:
+  # ────────────────────────────────────────────────────────────
+  # JOB 1: Tests + CI Visibility
+  # ────────────────────────────────────────────────────────────
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -r app/requirements.txt
+
+      - name: Run tests with CI Visibility
+        env:
+          DD_API_KEY: ${{ secrets.DD_API_KEY }}
+          DD_SITE: datadoghq.com
+          DD_SERVICE: ${{ env.DD_SERVICE }}
+          DD_ENV: ${{ env.DD_ENV }}
+          DATADOG_PYTHON_VERSION: 3
+        run: |
+          pip install pytest-datadog-ci
+          cd app
+          DD_CIVISIBILITY_AGENTLESS_ENABLED=true \
+          DD_CIVISIBILITY_ENABLED=true \
+          pytest test_main.py -v \
+            --ddtrace \
+            --cov=. \
+            --cov-report=xml:coverage.xml
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: app/coverage.xml
+
+  # ────────────────────────────────────────────────────────────
+  # JOB 2: Datadog SAST scan (Code Analysis)
+  # ────────────────────────────────────────────────────────────
+  sast:
+    name: SAST Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Datadog SAST
+        uses: datadog/datadog-static-analyzer-github-action@v1
+        with:
+          dd_api_key: ${{ secrets.DD_API_KEY }}
+          dd_app_key: ${{ secrets.DD_APP_KEY }}
+          dd_service: ${{ env.DD_SERVICE }}
+          dd_env: ${{ env.DD_ENV }}
+          dd_site: datadoghq.com
+          cpu_count: 2
+          enable_performance_statistics: true
+
+  # ────────────────────────────────────────────────────────────
+  # JOB 3: Claude AI analysis (comenta el PR con análisis)
+  # ────────────────────────────────────────────────────────────
+  claude-analysis:
+    name: Claude Code Analysis
+    runs-on: ubuntu-latest
+    needs: sast
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Analyze with Claude and comment PR
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          pip install anthropic requests
+
+          python3 << 'PYTHON'
+          import anthropic
+          import requests
+          import os
+          import subprocess
+
+          # Obtener diff del PR
+          diff = subprocess.run(
+              ["git", "diff", "origin/main...HEAD", "--", "*.py"],
+              capture_output=True, text=True
+          ).stdout[:8000]  # límite de contexto
+
+          if not diff.strip():
+              print("No Python changes found, skipping analysis.")
+              exit(0)
+
+          # Llamar a Claude para análisis
+          client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+          message = client.messages.create(
+              model="claude-opus-4-5",
+              max_tokens=1024,
+              messages=[{
+                  "role": "user",
+                  "content": f"""Eres un experto en seguridad de aplicaciones. Analiza este diff de código Python 
+          e identifica vulnerabilidades de seguridad. Para cada vulnerabilidad encontrada:
+          1. Nombra el tipo de vulnerabilidad (SQL Injection, Command Injection, etc.)
+          2. Indica la línea afectada
+          3. Explica el riesgo en una línea
+          4. Proporciona el código corregido
+
+          Responde en español. Sé conciso. Formato markdown.
+
+          DIFF:
+          {diff}"""
+              }]
+          )
+
+          analysis = message.content[0].text
+
+          # Publicar comentario en el PR
+          comment_body = f"""## 🤖 Análisis de seguridad — Claude AI
+
+          {analysis}
+
+          ---
+          *Análisis generado automáticamente por Claude. Revisa también los resultados de Datadog Code Analysis.*
+          """
+
+          headers = {
+              "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+              "Accept": "application/vnd.github+json"
+          }
+          url = f"https://api.github.com/repos/{os.environ['REPO']}/issues/{os.environ['PR_NUMBER']}/comments"
+          resp = requests.post(url, json={"body": comment_body}, headers=headers)
+          print(f"Comment posted: {resp.status_code}")
+          PYTHON
+
+  # ────────────────────────────────────────────────────────────
+  # JOB 4: Build + Deploy a GKE (solo en push a main)
+  # ────────────────────────────────────────────────────────────
+  deploy:
+    name: Deploy to GKE
+    runs-on: ubuntu-latest
+    needs: [test, sast]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+
+      - name: Build and push Docker image
+        run: |
+          docker build -t ${{ env.IMAGE }}:${{ github.sha }} \
+                       -t ${{ env.IMAGE }}:latest \
+                       ./app
+          docker push ${{ env.IMAGE }}:${{ github.sha }}
+          docker push ${{ env.IMAGE }}:latest
+
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: dd-workshop-cluster
+          location: us-central1
+
+      - name: Update image in deployment
+        run: |
+          sed -i "s|REGION-docker.pkg.dev/PROJECT_ID/dd-workshop/dd-workshop-api:latest|${{ env.IMAGE }}:${{ github.sha }}|g" k8s/deployment.yaml
+
+      - name: Deploy to GKE
+        run: |
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
+          kubectl rollout status deployment/dd-workshop-api --timeout=120s
+
+      - name: Get service URL
+        run: |
+          echo "Waiting for LoadBalancer IP..."
+          for i in {1..20}; do
+            IP=$(kubectl get svc dd-workshop-api -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)
+            if [ -n "$IP" ]; then
+              echo "App URL: http://$IP"
+              break
+            fi
+            sleep 10
+          done
