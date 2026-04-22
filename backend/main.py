@@ -132,7 +132,7 @@ def list_products(
         # FIX: Use parameterized query to prevent SQL injection
         cursor.execute("SELECT * FROM products WHERE category = ? LIMIT ? OFFSET ?", (category, limit, offset))
     else:
-        cursor.execute(f"SELECT * FROM products LIMIT {limit} OFFSET {offset}")
+        cursor.execute("SELECT * FROM products LIMIT ? OFFSET ?", (limit, offset))
     products = [dict(r) for r in cursor.fetchall()]
     cursor.execute("SELECT COUNT(*) FROM products")
     total = cursor.fetchone()[0]
