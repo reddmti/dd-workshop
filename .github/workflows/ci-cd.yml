@@ -37,6 +37,7 @@ jobs:
           api_key: ${{ secrets.DD_API_KEY }}
           site: datadoghq.com
           service: dd-workshop-api
+          python-tracer-version: "2.10.0"
 
       - name: Run tests
         env:
