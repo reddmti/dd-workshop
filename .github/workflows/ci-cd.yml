@@ -60,6 +60,7 @@ jobs:
   sast:
     name: SAST Scan
     runs-on: ubuntu-latest
+    if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v4
 
