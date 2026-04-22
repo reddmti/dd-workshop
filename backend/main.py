@@ -129,8 +129,8 @@ def list_products(
     cursor = conn.cursor()
     offset = (page - 1) * limit
     if category:
-        # VULN 4: SQL Injection en category filter
-        cursor.execute(f"SELECT * FROM products WHERE category = '{category}' LIMIT {limit} OFFSET {offset}")
+        # FIX: Use parameterized query to prevent SQL injection
+        cursor.execute("SELECT * FROM products WHERE category = ? LIMIT ? OFFSET ?", (category, limit, offset))
     else:
         cursor.execute(f"SELECT * FROM products LIMIT {limit} OFFSET {offset}")
     products = [dict(r) for r in cursor.fetchall()]
