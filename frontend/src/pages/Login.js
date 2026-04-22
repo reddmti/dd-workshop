@@ -13,16 +13,15 @@ const styles = {
   bg: {
     position: 'absolute', inset: 0, zIndex: 0,
     background: `
-      radial-gradient(ellipse 80% 60% at 20% 50%, rgba(124,58,237,0.12) 0%, transparent 60%),
-      radial-gradient(ellipse 60% 80% at 80% 20%, rgba(167,139,250,0.08) 0%, transparent 50%),
-      radial-gradient(ellipse 40% 40% at 60% 80%, rgba(124,58,237,0.06) 0%, transparent 40%)
+      radial-gradient(ellipse 80% 60% at 20% 50%, rgba(79,70,229,0.06) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 80% at 80% 20%, rgba(99,102,241,0.04) 0%, transparent 50%)
     `,
   },
   grid: {
     position: 'absolute', inset: 0, zIndex: 0,
     backgroundImage: `
-      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)
+      linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px)
     `,
     backgroundSize: '40px 40px',
   },
@@ -71,11 +70,10 @@ const styles = {
   },
   card: {
     width: '100%', padding: '48px',
-    background: 'rgba(17,17,24,0.8)',
-    backdropFilter: 'blur(20px)',
+    background: '#ffffff',
     border: '1px solid var(--border)',
     borderRadius: '20px',
-    boxShadow: 'var(--shadow), var(--shadow-accent)',
+    boxShadow: 'var(--shadow)',
     animation: 'fadeIn 0.5s ease',
   },
   cardTitle: {
@@ -94,7 +92,7 @@ const styles = {
   },
   input: {
     width: '100%', padding: '14px 16px',
-    background: 'rgba(255,255,255,0.04)',
+    background: 'var(--bg2)',
     border: '1px solid var(--border)',
     borderRadius: 'var(--radius-sm)',
     color: 'var(--text)', fontSize: '15px',
@@ -122,8 +120,8 @@ const styles = {
   hint: {
     marginTop: '24px', padding: '16px',
     borderRadius: 'var(--radius-sm)',
-    background: 'rgba(124,58,237,0.08)',
-    border: '1px solid rgba(124,58,237,0.15)',
+    background: 'var(--bg2)',
+    border: '1px solid var(--border)',
     fontSize: '12px', color: 'var(--text2)',
   },
   hintRow: { display: 'flex', justifyContent: 'space-between', marginBottom: '4px' },

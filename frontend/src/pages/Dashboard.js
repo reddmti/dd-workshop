@@ -47,11 +47,11 @@ const s = {
     padding: '12px 24px', borderRadius: 'var(--radius-sm)',
     fontSize: '13px', fontWeight: 600,
     fontFamily: 'var(--font-display)', letterSpacing: '0.04em',
-    background: variant === 'danger' ? 'rgba(239,68,68,0.1)'
-              : variant === 'accent' ? 'var(--accent)' : 'rgba(255,255,255,0.05)',
-    color: variant === 'danger' ? '#fca5a5'
+    background: variant === 'danger' ? 'rgba(220,38,38,0.08)'
+              : variant === 'accent' ? 'var(--accent)' : 'var(--bg2)',
+    color: variant === 'danger' ? '#dc2626'
          : variant === 'accent' ? '#fff' : 'var(--text2)',
-    border: variant === 'danger' ? '1px solid rgba(239,68,68,0.2)'
+    border: variant === 'danger' ? '1px solid rgba(220,38,38,0.2)'
           : variant === 'accent' ? 'none' : '1px solid var(--border)',
     cursor: 'pointer',
     boxShadow: variant === 'accent' ? '0 4px 16px var(--accent-glow)' : 'none',
@@ -71,7 +71,7 @@ const s = {
   row: { display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' },
   result: {
     marginTop: '16px', padding: '16px',
-    background: 'rgba(0,0,0,0.3)', borderRadius: 'var(--radius-sm)',
+    background: 'var(--bg3)', borderRadius: 'var(--radius-sm)',
     fontSize: '12px', color: 'var(--text2)', fontFamily: 'monospace',
     maxHeight: '120px', overflow: 'auto',
     border: '1px solid var(--border)',

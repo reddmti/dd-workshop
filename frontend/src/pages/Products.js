@@ -12,7 +12,7 @@ const s = {
     padding: '10px 20px', borderRadius: 'var(--radius-sm)',
     fontSize: '13px', fontWeight: 600,
     fontFamily: 'var(--font-display)',
-    background: v === 'primary' ? 'var(--accent)' : 'rgba(255,255,255,0.05)',
+    background: v === 'primary' ? 'var(--accent)' : 'var(--bg2)',
     color: v === 'primary' ? '#fff' : 'var(--text2)',
     border: v === 'primary' ? 'none' : '1px solid var(--border)',
     cursor: 'pointer',
@@ -28,7 +28,7 @@ const s = {
   },
   td: {
     padding: '14px 16px', fontSize: '14px',
-    color: 'var(--text)', borderBottom: '1px solid rgba(255,255,255,0.04)',
+    color: 'var(--text)', borderBottom: '1px solid var(--border)',
   },
   tr: { transition: 'background 0.15s' },
   badge: (cat) => {
@@ -48,16 +48,16 @@ const s = {
   },
   modal: {
     position: 'fixed', inset: 0, zIndex: 100,
-    background: 'rgba(0,0,0,0.7)',
+    background: 'rgba(0,0,0,0.3)',
     backdropFilter: 'blur(4px)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
   },
   modalCard: {
     width: '440px', padding: '36px',
-    background: 'var(--bg2)',
+    background: '#ffffff',
     border: '1px solid var(--border)',
     borderRadius: '20px',
-    boxShadow: 'var(--shadow)',
+    boxShadow: '0 8px 40px rgba(0,0,0,0.12)',
     animation: 'fadeIn 0.2s ease',
   },
   modalTitle: {
@@ -73,7 +73,7 @@ const s = {
   },
   input: {
     width: '100%', padding: '11px 14px',
-    background: 'rgba(255,255,255,0.04)',
+    background: 'var(--bg2)',
     border: '1px solid var(--border)',
     borderRadius: 'var(--radius-sm)',
     color: 'var(--text)', fontSize: '14px', marginBottom: '16px',

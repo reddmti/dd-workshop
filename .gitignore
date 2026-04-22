@@ -8,3 +8,12 @@ node_modules/
 frontend/build/
 *.egg-info/
 archivos a ordenar/
+
+# Editor y herramientas locales
+.vscode/
+.claude/
+.idea/
+
+# Lock files
+package-lock.json
+yarn.lock

@@ -3,7 +3,8 @@
     "allow": [
       "WebFetch(domain:github.com)",
       "WebSearch",
-      "WebFetch(domain:docs.datadoghq.com)"
+      "WebFetch(domain:docs.datadoghq.com)",
+      "Bash(dir /a \"C:\\\\Users\\\\matia\\\\Documents\\\\GitHub\\\\dd-workshop\")"
     ]
   }
 }
