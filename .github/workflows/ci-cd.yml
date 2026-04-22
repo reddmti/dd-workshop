@@ -127,6 +127,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Record deploy start time
+        run: echo "DEPLOY_START=$(date +%s)" >> $GITHUB_ENV
+
       - uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
@@ -170,6 +173,19 @@ jobs:
           kubectl apply -f k8s/manifests.yaml
           kubectl rollout status deployment/dd-workshop-backend --timeout=120s
           kubectl rollout status deployment/dd-workshop-frontend --timeout=120s
+
+      - name: Report deployment to Datadog DORA
+        run: |
+          npm install -g @datadog/datadog-ci
+          datadog-ci dora deployment \
+            --service dd-workshop-api \
+            --env workshop \
+            --started-at ${{ env.DEPLOY_START }} \
+            --finished-at $(date +%s) \
+            --git-repository-url https://github.com/${{ github.repository }} \
+            --git-commit-sha ${{ github.sha }}
+        env:
+          DATADOG_API_KEY: ${{ secrets.DD_API_KEY }}
 
       - name: Run Synthetic Tests
         uses: DataDog/synthetics-ci-github-action@v4.0.0
