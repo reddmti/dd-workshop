@@ -1,7 +1,8 @@
 FROM node:18-alpine AS builder
 WORKDIR /app
 COPY package.json .
-RUN npm install --legacy-peer-deps
+RUN npm install --legacy-peer-deps && \
+    npm install ajv@^8.11.0 ajv-keywords@^5.0.0 --legacy-peer-deps
 COPY . .
 ENV GENERATE_SOURCEMAP=false
 ENV DISABLE_ESLINT_PLUGIN=true
