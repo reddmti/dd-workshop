@@ -30,18 +30,20 @@ jobs:
       - name: Install dependencies
         run: pip install -r backend/requirements.txt
 
-      - name: Run tests with CI Visibility
+      - name: Configure Datadog Test Optimization
+        uses: datadog/test-visibility-github-action@v2
+        with:
+          languages: python
+          api_key: ${{ secrets.DD_API_KEY }}
+          site: datadoghq.com
+          service: dd-workshop-api
+
+      - name: Run tests
         env:
-          DD_API_KEY: ${{ secrets.DD_API_KEY }}
-          DD_SITE: datadoghq.com
-          DD_SERVICE: dd-workshop-api
           DD_ENV: workshop
-          DD_CIVISIBILITY_AGENTLESS_ENABLED: "true"
-          DD_CIVISIBILITY_ENABLED: "true"
-          DD_TRACE_AGENT_URL: ""
         run: |
           cd backend
-          ddtrace-run pytest test_main.py -v \
+          pytest test_main.py -v \
             --cov=. \
             --cov-report=xml:coverage.xml
 
