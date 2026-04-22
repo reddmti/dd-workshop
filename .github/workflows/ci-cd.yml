@@ -78,8 +78,7 @@ jobs:
   claude-analysis:
     name: Claude Analysis
     runs-on: ubuntu-latest
-    needs: sast
-    if: github.event_name == 'pull_request'
+    if: false # desactivado temporalmente (requiere saldo en API de Anthropic)
     steps:
       - uses: actions/checkout@v4
 

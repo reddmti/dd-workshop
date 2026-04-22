@@ -177,20 +177,37 @@ La action `test-visibility-github-action@v2` instrumenta pytest automáticamente
 
 **`.github/workflows/ci-cd.yml` — Job `sast`:**
 ```yaml
-- name: Datadog SAST
-  uses: datadog/datadog-static-analyzer-github-action@v3
-  with:
-    dd_api_key: ${{ secrets.DD_API_KEY }}
-    dd_app_key: ${{ secrets.DD_APP_KEY }}
-    dd_site: datadoghq.com
-    cpu_count: 2
+sast:
+  name: SAST Scan
+  runs-on: ubuntu-latest
+  if: github.event_name == 'push'   # solo en push, no en pull_request
+  steps:
+    - name: Datadog SAST
+      uses: datadog/datadog-static-analyzer-github-action@v3
+      with:
+        dd_api_key: ${{ secrets.DD_API_KEY }}
+        dd_app_key: ${{ secrets.DD_APP_KEY }}
+        dd_site: datadoghq.com
+        cpu_count: 2
 ```
 
-Corre en paralelo con el job `test` en cada push y PR.
+> **Nota:** La condición `if: github.event_name == 'push'` es necesaria porque la GitHub Action de Datadog SAST no soporta el evento `pull_request` — falla con error si se intenta correr en ese contexto. El análisis siempre ocurre sobre el código que llega a `main` después del merge.
+
+Corre en cada push a `main` (incluyendo merges de PRs).
 
 ### Dónde verlo en Datadog
 
 `Code Analysis → Repositories → dd-workshop`
+
+### Flujo de remediación desde Datadog
+
+Cuando Datadog detecta una vulnerabilidad, permite aplicar la remediación directamente desde la UI:
+
+1. `Code Analysis → Repositories → dd-workshop` → seleccionar la vulnerabilidad
+2. Datadog crea automáticamente una **rama nueva** (ej. `dd/fix-sql-injection-category-filter`) con el fix aplicado y abre un **Pull Request**
+3. El PR activa el pipeline en esa rama: `test` ✅ + `sast` (se salta) + `claude-analysis` ✅
+4. Claude comenta el análisis de seguridad del diff en el PR
+5. Se hace merge → push a `main` → pipeline completo: `test` + `sast` + `deploy`
 
 ---
 
