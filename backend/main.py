@@ -51,7 +51,7 @@ def get_db():
     conn.execute("INSERT INTO users VALUES (2,'matias','password123','user','matias@workshop.dev')")
     conn.execute("INSERT INTO users VALUES (3,'demo','demo2024','user','demo@workshop.dev')")
     for i in range(1, 51):
-        conn.execute(f"INSERT INTO products VALUES ({i},'Product {i}',{round(random.uniform(10,500),2)},{random.randint(0,100)},'Category {(i%5)+1}')")
+        conn.execute("INSERT INTO products VALUES (?,?,?,?,?)", (i, f'Product {i}', round(random.uniform(10,500),2), random.randint(0,100), f'Category {(i%5)+1}'))
     conn.commit()
     return conn
 
