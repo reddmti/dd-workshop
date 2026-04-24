@@ -54,6 +54,17 @@ jobs:
           name: coverage
           path: backend/coverage.xml
 
+      - name: Evaluate Datadog Quality Gate
+        uses: DataDog/datadog-ci-github-action@v2.3.0
+        with:
+          command: gate evaluate
+        env:
+          DD_API_KEY: ${{ secrets.DD_API_KEY }}
+          DD_APP_KEY: ${{ secrets.DD_APP_KEY }}
+          DD_SITE: datadoghq.com
+          DD_SERVICE: dd-workshop-api
+          DD_ENV: workshop
+
   # ────────────────────────────────────
   # JOB 2: SAST Scan
   # ────────────────────────────────────
