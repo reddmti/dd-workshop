@@ -192,7 +192,7 @@ jobs:
         with:
           api-key: ${{ secrets.DD_API_KEY }}
           app-key: ${{ secrets.DD_APP_KEY }}
-          public-ids: "tkm-8uj-cax"
+          public-ids: "i7t-w8b-bse,pi4-tmb-4cv"
           datadog-site: datadoghq.com
 
       - name: Get ingress IP
