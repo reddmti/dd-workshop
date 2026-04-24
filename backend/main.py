@@ -88,8 +88,7 @@ def verify_token(authorization: Optional[str] = Header(None)):
 
 @app.get("/api/health")
 def health():
-    # BUG: simula fallo crítico del servicio para demo de Continuous Testing
-    raise HTTPException(status_code=500, detail="Service unavailable")
+    return {"status": "healthy", "version": "2.0.0", "service": "dd-workshop-api"}
 
 @app.get("/")
 def root():
