@@ -9,7 +9,7 @@ AUTH = {"Authorization": f"Bearer {JWT_SECRET}"}
 
 def test_health():
     r = client.get("/api/health")
-    assert r.status_code == 200
+    assert r.status_code == 500  # BUG intencional para demo
     assert r.json()["status"] == "healthy"
 
 def test_root():
