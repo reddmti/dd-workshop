@@ -54,16 +54,8 @@ jobs:
           name: coverage
           path: backend/coverage.xml
 
-      - name: Evaluate Datadog Quality Gate
-        run: |
-          npm install -g @datadog/datadog-ci
-          datadog-ci gate evaluate
-        env:
-          DD_API_KEY: ${{ secrets.DD_API_KEY }}
-          DD_APP_KEY: ${{ secrets.DD_APP_KEY }}
-          DD_SITE: datadoghq.com
-          DD_SERVICE: dd-workshop-api
-          DD_ENV: workshop
+      # PR Gates (nuevo producto) se evaluan automaticamente via GitHub App de Datadog.
+      # No hace falta llamar a datadog-ci gate evaluate (eso es para las Quality Gates legacy).
 
   # ────────────────────────────────────
   # JOB 2: SAST Scan
